@@ -1,0 +1,60 @@
+[
+    {
+        "name": "Richard",
+        "surname": "Nixon",
+        "start": "1969-01-02",
+        "end": "1974-08-09",
+        "affil": "Republican"
+    },
+    {
+        "name": "Gerald",
+        "surname": "Ford",
+        "start": "1974-08-04",
+        "end": "1977-01-20",
+        "affil": "Republican"
+    },
+    {
+        "name": "Jimmy",
+        "surname": "Carter",
+        "start": "1977-01-20",
+        "end": "1981-01-20",
+        "affil": "Democratic"
+    },
+    {
+        "name": "Ronald",
+        "surname": "Reagan",
+        "start": "1981-01-20",
+        "end": "1989-01-20",
+        "affil": "Republican"
+    },
+    {
+        "name": "George",
+        "midname": "H. W.",
+        "surname": "Bush",
+        "start": "1989-01-20",
+        "end": "1993-01-20",
+        "affil": "Republican"
+    },
+    {
+        "name": "Bill",
+        "surname": "Clinton",
+        "start": "1993-01-20",
+        "end": "2001-01-20",
+        "affil": "Democratic"
+    },
+    {
+        "name": "George",
+        "midname": "W.",
+        "surname": "Bush",
+        "start": "2001-01-20",
+        "end": "2009-01-20",
+        "affil": "Republican"
+    },
+    {
+        "name": "Barack",
+        "surname": "Obama",
+        "start": "2009-01-20",
+        "end": "2017-01-20",
+        "affil": "Democratic"
+    }
+]

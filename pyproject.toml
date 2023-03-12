@@ -1,0 +1,21 @@
+[build-system]
+requires = [ "setuptools >= 61.0", "wheel" ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "msb"
+requires-python = ">=3.10"
+version = "0.0.1"
+authors = [{name = "Szymon Talaga", email = "stalaga@protonmail.com"}]
+readme = "README.md"
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.10",
+    "pandas>=1.5",
+    "scikit-learn>=1.2",
+    "joblib>=1.1",
+    "python-igraph>=0.10"
+]
+
+[tool.setuptools.packages.find]
+include = ["msb"]
