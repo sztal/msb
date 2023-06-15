@@ -19,3 +19,18 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["msb"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "--verbose",
+    "--tb=no",
+    "--capture=no",
+    "--pdbcls=IPython.terminal.debugger:Pdb",
+]
+testpaths = [
+    "tests"
+]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
