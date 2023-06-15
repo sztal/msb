@@ -7,6 +7,7 @@ from .utils import is_symmetric
 __all__ = ["cycle_count"]
 
 
+@numba.njit
 def prime_count(
     A: np.ndarray[tuple[int, int]],
     L0: int,
@@ -29,8 +30,8 @@ def prime_count(
         Current subgraph, a list of vertices, further vertices are
         added to this list
     primes
-        A tuple of two lists regrouping the contributions of all subgraphs
-        considered earlier.
+        A tuple of two 1D complex arrays regrouping
+        the contributions of all subgraphs considered earlier.
     directed
         If the graph is directed
 
@@ -42,27 +43,34 @@ def prime_count(
         The first is N_positive - N_negative, the next is N_positive + N_negative.
     """
     # pylint: disable=too-many-locals
-    eigvals = np.linalg.eigvals if directed else np.linalg.eigvalsh
-
+    subgraph = np.array(subgraph)
     subgraph_size = len(subgraph)
-    import ipdb; ipdb.set_trace()
-    x = A[np.ix_(subgraph, subgraph)]
-    x_p = np.abs(x)
-    xeig = eigvals(x)
-    xeig_p = eigvals(x_p)
-    xS = np.power(xeig, subgraph_size)
-    xS_p = np.power(xeig_p, subgraph_size)
+    x = A[subgraph][:, subgraph].astype(np.complex128)
+    x_p = np.abs(x).astype(np.complex128)
+    # if directed:
+    xeig = np.linalg.eigvals(x)
+    xeig_p = np.linalg.eigvals(x_p)
+    # else:
+    #     xeig = np.linalg.eigvalsh(x)
+    #     xeig_p = np.linalg.eigvalsh(x_p)
+    xS = (xeig**subgraph_size)
+    xS_p = (xeig_p**subgraph_size)
+    # xS = np.power(xeig, subgraph_size)
+    # xS_p = np.power(xeig_p, subgraph_size)
+    # if not directed:
+    #     xS = xS.astype(np.float64)
+    #     xS_p = xS_p.astype(np.float64)
     mk = min(L0, n_neighbours + subgraph_size)
 
     binomial_coeff = 1
     for k in range(subgraph_size, mk):
-        primes[0][k - 1] += (-1)**k * binomial_coeff * (-1)**subgraph_size * sum(xS) / k
-        primes[1][k - 1] += (-1)**k * binomial_coeff * (-1)**subgraph_size * sum(xS_p) / k
+        primes[0][k-1] += (-1)**k * binomial_coeff * (-1)**subgraph_size * sum(xS) / k
+        primes[1][k-1] += (-1)**k * binomial_coeff * (-1)**subgraph_size * sum(xS_p) / k
         xS = xS * xeig
         xS_p = xS_p * xeig_p
-        binomial_coeff = binomial_coeff * (subgraph_size-k+n_neighbours) / (1-subgraph_size+k)
-    primes[0][mk - 1] += (-1)**mk * binomial_coeff * (-1)**subgraph_size * sum(xS) / mk
-    primes[1][mk - 1] += (-1)**mk * binomial_coeff * (-1)**subgraph_size * sum(xS_p) / mk
+        binomial_coeff *= (subgraph_size-k+n_neighbours) / (1-subgraph_size+k)
+    primes[0][mk-1] += (-1)**mk * binomial_coeff * (-1)**subgraph_size * sum(xS) / mk
+    primes[1][mk-1] += (-1)**mk * binomial_coeff * (-1)**subgraph_size * sum(xS_p) / mk
     return primes
 
 
@@ -95,8 +103,8 @@ def recursive_subgraphs(
         considered for addition to the current subgraph to
         form a larger one.
     primes
-        A tuple of two lists regrouping the contributions of all subgraphs
-        considered earlier.
+        A tuple of two 1D complex arrays regrouping the contributions
+        of all subgraphs considered earlier.
     neighbourhood
         Indicator vector of the vertices that are contained
         in the current subgraph or reachable via one edge
@@ -155,7 +163,10 @@ def cycle_count(
         Using these two lists, one can compute ``N_positive`` and ``N_negative``.
     """
     A = A.copy()
-    primes = np.full(L0, 0).tolist(), np.full(L0, 0).tolist()
+    primes = (
+        np.full(L0, 0, dtype=np.complex128),
+        np.full(L0, 0, dtype=np.complex128)
+    )
     np.fill_diagonal(A, 0)
 
     if is_symmetric(A):
