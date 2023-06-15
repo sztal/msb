@@ -139,7 +139,7 @@ def recursive_subgraphs(
     return primes
 
 
-# @numba.njit
+@numba.njit
 def cycle_count(
     A: np.ndarray[tuple[int, int]],
     L0: int
