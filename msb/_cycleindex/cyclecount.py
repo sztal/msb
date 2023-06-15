@@ -38,7 +38,8 @@ def prime_count(
     Returns
     -------
     tuple
-        A tuple of two lists. Each show the contribution of all subgraphs so far
+        A tuple of two 1D complex arrays.
+        Each show the contribution of all subgraphs so far
         and now including the contributuon of the subgraph passed to this function.
         The first is N_positive - N_negative, the next is N_positive + N_negative.
     """
@@ -68,6 +69,7 @@ def prime_count(
     return primes
 
 
+@numba.njit
 def recursive_subgraphs(
     A: np.ndarray[tuple[int, int]],
     Anw: np.ndarray[tuple[int, int]],
@@ -93,7 +95,7 @@ def recursive_subgraphs(
     subgraph
         List of vertices that form current subgraph
     allowed
-        Indicator vector of pruned vertices that may be
+        1D indicator vector array of pruned vertices that may be
         considered for addition to the current subgraph to
         form a larger one.
     primes
@@ -108,7 +110,8 @@ def recursive_subgraphs(
     Returns
     -------
     tuple
-        Two lists regrouping the contribution of all the subgraphs found so far
+        Two 1D complex arrays regrouping the contributions
+        of all the subgraphs found so far.
     """
     L = len(subgraph)
     n_neighbours = len(np.nonzero(neighbourhood)[0]) - L
@@ -119,7 +122,7 @@ def recursive_subgraphs(
     if L == L0:
         return primes
 
-    neighbours = np.where(np.array(neighbourhood) & np.array(allowed))[0]
+    neighbours = np.where(neighbourhood & allowed)[0]
     for j, _ in enumerate(neighbours):
         v = neighbours[j]
         if len(subgraph) > L:
@@ -129,13 +132,14 @@ def recursive_subgraphs(
         allowed[v] = False
         new_neighbourhood = neighbourhood + Anw[v, :]
         primes = recursive_subgraphs(
-            A, Anw, L0, subgraph[:], allowed[:],
-            primes, new_neighbourhood[:], directed
+            A, Anw, L0, subgraph.copy(), allowed.copy(),
+            primes, new_neighbourhood, directed
         )
 
     return primes
 
 
+# @numba.njit
 def cycle_count(
     A: np.ndarray[tuple[int, int]],
     L0: int
@@ -176,15 +180,16 @@ def cycle_count(
     size = len(A)
     L0 = min(size, L0)
 
-    allowed = np.full(size, True).tolist()
+    allowed = np.full(size, True)
     for i in range(len(A)):
         allowed[i] = False
         neighbourhood = np.full(size, False)
         neighbourhood[i] = True
         neighbourhood += Anw[i, :]
+        subgraph = numba.typed.List([i])
         primes = recursive_subgraphs(
-            A, Anw, L0, [i], allowed[:],
-            primes, neighbourhood[:], directed
+            A, Anw, L0, subgraph, allowed.copy(),
+            primes, neighbourhood, directed
         )
 
     return primes
