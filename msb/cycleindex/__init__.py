@@ -21,7 +21,7 @@ def batch_count_(G, length, batch_size, sampling_func=nrsampling, exact_subgraph
 
 
 def batch_count_parallel_(G, length, batch_size, n_cores, pool, sampling_func=nrsampling, exact_subgraph_size=True, counts=([], [])):
-    promises = [pool.apply_async(batch_count_, args=(None, length, int(np.ceil(batch_size / n_cores)), sampling_func, exact_subgraph_size))
+    promises = [pool.apply_async(batch_count_, args=(None, length, batch_size / n_cores, sampling_func, exact_subgraph_size))
                 for i in range(n_cores)]
     count = ([], [])
     for p in promises:

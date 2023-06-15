@@ -90,9 +90,9 @@ def nrsampling(
     size
         Size of subgraph to sample
     exact
-        If True, the algorithm tries to find a subgraph that matches the size exactly.
-        It means if the graph G does not include such subgraph, the function never returns.
-        If False, the algorithm returns a subgraph that might be smaller than the required size,
+        If ``True``, the algorithm tries to find a subgraph that matches the size exactly.
+        It means if ``A`` does not include such subgraph, the function never returns.
+        If ``False``, the algorithm returns a subgraph that might be smaller than the required size,
         even if such subgraph exists in the graph.
 
     Notes
