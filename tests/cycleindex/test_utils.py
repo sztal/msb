@@ -4,8 +4,8 @@
 # pylint: disable=missing-function-docstring,line-too-long
 import pytest
 import numpy as np
-from msb.cycleindex.utils import clean_matrix, is_symmetric
-from msb.cycleindex.utils import is_weakly_connected, calc_ratio
+from msb._cycleindex.utils import clean_matrix, is_symmetric
+from msb._cycleindex.utils import is_weakly_connected, calc_ratio
 
 
 @pytest.mark.parametrize("A, out", [
