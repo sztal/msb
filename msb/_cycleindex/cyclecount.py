@@ -43,23 +43,17 @@ def prime_count(
         The first is N_positive - N_negative, the next is N_positive + N_negative.
     """
     # pylint: disable=too-many-locals
-    subgraph = np.array(subgraph)
     subgraph_size = len(subgraph)
     x = A[subgraph][:, subgraph].astype(np.complex128)
     x_p = np.abs(x).astype(np.complex128)
-    # if directed:
-    xeig = np.linalg.eigvals(x)
-    xeig_p = np.linalg.eigvals(x_p)
-    # else:
-    #     xeig = np.linalg.eigvalsh(x)
-    #     xeig_p = np.linalg.eigvalsh(x_p)
-    xS = (xeig**subgraph_size)
-    xS_p = (xeig_p**subgraph_size)
-    # xS = np.power(xeig, subgraph_size)
-    # xS_p = np.power(xeig_p, subgraph_size)
-    # if not directed:
-    #     xS = xS.astype(np.float64)
-    #     xS_p = xS_p.astype(np.float64)
+    if directed:
+        xeig = np.linalg.eigvals(x)
+        xeig_p = np.linalg.eigvals(x_p)
+    else:
+        xeig = np.linalg.eigvalsh(x).astype(np.complex128)
+        xeig_p = np.linalg.eigvalsh(x_p).astype(np.complex128)
+    xS = xeig**subgraph_size
+    xS_p = xeig_p**subgraph_size
     mk = min(L0, n_neighbours + subgraph_size)
 
     binomial_coeff = 1
@@ -118,7 +112,10 @@ def recursive_subgraphs(
     """
     L = len(subgraph)
     n_neighbours = len(np.nonzero(neighbourhood)[0]) - L
-    primes = prime_count(A, L0, subgraph, n_neighbours, primes, directed)
+    primes = prime_count(
+        A, L0, np.array(list(subgraph)),
+        n_neighbours, primes, directed
+    )
     if L == L0:
         return primes
 
