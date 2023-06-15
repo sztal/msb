@@ -1,7 +1,6 @@
 """Utility functions."""
-from typing import Any, Iterable
+from typing import Iterable
 import numpy as np
-import numba
 from numba import njit
 
 
