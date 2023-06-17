@@ -4,7 +4,7 @@
 # pylint: disable=missing-function-docstring
 import pytest
 import numpy as np
-from msb._cycleindex.sampling import nrsampling, set_sampler_seed
+from msb.cycleindex.sampling import nrsampling, set_sampler_seed
 
 
 @pytest.mark.parametrize("G,size,expected,seed", [
@@ -29,4 +29,4 @@ from msb._cycleindex.sampling import nrsampling, set_sampler_seed
 ])
 def test_nrsampling(G, size, expected, seed):
     set_sampler_seed(seed)
-    assert nrsampling(G, size) == expected
+    assert (nrsampling(G, size) == expected).all()

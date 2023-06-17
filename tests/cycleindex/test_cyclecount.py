@@ -4,7 +4,7 @@
 # pylint: disable=missing-function-docstring
 import pytest
 import numpy as np
-from msb._cycleindex.cyclecount import cycle_count
+from msb.cycleindex.cyclecount import cycle_count
 
 
 @pytest.mark.parametrize("A, expected", [

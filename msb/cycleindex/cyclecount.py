@@ -1,63 +1,90 @@
+"""Cycle counting functions."""
+from typing import Any, Callable
 import numpy as np
+import numba
+from .sampling import nrsampling
 from .utils import is_symmetric
 
 
-def prime_count(A, L0, Subgraph, NeighboursNumber, Primes, Directed):
-    """
-    Calculates the contribution to the combinatorial sieve of a
+__all__ = ["cycle_count", "cycle_count_sample"]
+
+
+@numba.njit
+def prime_count(
+    A: np.ndarray[tuple[int, int]],
+    L: int,
+    subgraph: list[int],
+    n_neighbours: list[int],
+    primes: tuple[list[int], list[int]],
+    directed: bool
+) -> tuple[list[int], list[int]]:
+    """Calculate the contribution to the combinatorial sieve of a
     given subgraph. This function is an implementation of the
     Eq. (2), extracting prime numbers from connected induced subgraphs
 
     Parameters
     ----------
-    A : numpy.ndarray
+    A
         Adjacency matrix of the graph, preferably sparse
-    L0: int
+    L
         Maximum subgraph size
-    Subgraph: list
+    subgraph
         Current subgraph, a list of vertices, further vertices are
         added to this list
-    Primes: tuple
-        A tuple of two lists regrouping the contributions of all subgraphs
-        considered earlier
-    Directed: bool
+    primes
+        A tuple of two 1D complex arrays regrouping
+        the contributions of all subgraphs considered earlier.
+    directed
         If the graph is directed
 
     Returns
     -------
     tuple
-        A tuple of two lists. Each show the contribution of all subgraphs so far
+        A tuple of two 1D complex arrays.
+        Each show the contribution of all subgraphs so far
         and now including the contributuon of the subgraph passed to this function.
         The first is N_positive - N_negative, the next is N_positive + N_negative.
     """
-    eigvals = np.linalg.eigvals if Directed else np.linalg.eigvalsh
+    # pylint: disable=too-many-locals
+    subgraph_size = len(subgraph)
+    x = A[subgraph][:, subgraph].astype(np.complex128)
+    x_p = np.abs(x).astype(np.complex128)
+    if directed:
+        xeig = np.linalg.eigvals(x)
+        xeig_p = np.linalg.eigvals(x_p)
+    else:
+        xeig = np.linalg.eigvalsh(x).astype(np.complex128)
+        xeig_p = np.linalg.eigvalsh(x_p).astype(np.complex128)
+    xS = xeig**subgraph_size
+    xS_p = xeig_p**subgraph_size
+    mk = min(L, n_neighbours + subgraph_size)
 
-    SubgraphSize = len(Subgraph)
-    x = A[np.ix_(Subgraph, Subgraph)]
-    x_p = np.abs(x)
-    xeig = eigvals(x)
-    xeig_p = eigvals(x_p)
-    xS = np.power(xeig, SubgraphSize)
-    xS_p = np.power(xeig_p, SubgraphSize)
-    mk = min(L0, NeighboursNumber + SubgraphSize)
-
-    BinomialCoeff = 1
-    for k in range(SubgraphSize, mk):
-        Primes[0][k - 1] += (-1) ** k * BinomialCoeff * (-1) ** SubgraphSize * sum(xS) / k
-        Primes[1][k - 1] += (-1) ** k * BinomialCoeff * (-1) ** SubgraphSize * sum(xS_p) / k
+    binomial_coeff = 1
+    for k in range(subgraph_size, mk):
+        primes[0][k-1] += (-1)**k * binomial_coeff * (-1)**subgraph_size * sum(xS) / k
+        primes[1][k-1] += (-1)**k * binomial_coeff * (-1)**subgraph_size * sum(xS_p) / k
         xS = xS * xeig
         xS_p = xS_p * xeig_p
-        BinomialCoeff = BinomialCoeff * (SubgraphSize - k + NeighboursNumber) / (1 - SubgraphSize + k)
-    Primes[0][mk - 1] += (-1)**mk * BinomialCoeff * (-1)**SubgraphSize * sum(xS) / mk
-    Primes[1][mk - 1] += (-1)**mk * BinomialCoeff * (-1)**SubgraphSize * sum(xS_p) / mk
-    return Primes
+        binomial_coeff *= (subgraph_size-k+n_neighbours) / (1-subgraph_size+k)
+    primes[0][mk-1] += (-1)**mk * binomial_coeff * (-1)**subgraph_size * sum(xS) / mk
+    primes[1][mk-1] += (-1)**mk * binomial_coeff * (-1)**subgraph_size * sum(xS_p) / mk
+    return primes
 
 
-def recursive_subgraphs(A, Anw, L0, Subgraph, AllowedVert, Primes, Neighbourhood, Directed):
-    """
-    Finds all the connected induced subgraphs of size up
-    to "L0" of a graph known through its adjacency matrix
-    "A" and containing the subgraph "Subgraph"
+@numba.njit
+def recursive_subgraphs(
+    A: np.ndarray[tuple[int, int]],
+    Anw: np.ndarray[tuple[int, int]],
+    L0: int,
+    subgraph: list[int],
+    allowed: np.ndarray[tuple[int], np.integer],
+    primes: tuple[list[int], list[int]],
+    neighbourhood: np.ndarray[tuple[int], np.integer],
+    directed: bool
+) -> tuple[list[int], list[int]]:
+    """Find all the connected induced subgraphs of size up
+    to ``L0`` of a graph known through its adjacency matrix
+    ``A`` and containing the subgraph ``Subgraph``
 
     Parameters
     ----------
@@ -67,84 +94,203 @@ def recursive_subgraphs(A, Anw, L0, Subgraph, AllowedVert, Primes, Neighbourhood
         Undirected unweighted equivalence of A
     L0: int
         Maximum subgraph size
-    Subgraph: list
+    subgraph
         List of vertices that form current subgraph
-    AllowedVert: list
-        Indicator vector of pruned vertices that may be
+    allowed
+        1D indicator vector array of pruned vertices that may be
         considered for addition to the current subgraph to
-        form a larger one
-    Neighbourhood: list
+        form a larger one.
+    primes
+        A tuple of two 1D complex arrays regrouping the contributions
+        of all subgraphs considered earlier.
+    neighbourhood
         Indicator vector of the vertices that are contained
         in the current subgraph or reachable via one edge
-    Directed: bool
+    directed
         Shows if "A" is directed or not
 
     Returns
     -------
     tuple
-        Two lists regrouping the contribution of all the subgraphs found so far
+        Two 1D complex arrays regrouping the contributions
+        of all the subgraphs found so far.
     """
-    L = len(Subgraph)
-    NeighboursNumber = len(np.nonzero(Neighbourhood)[0]) - L
-    Primes = prime_count(A, L0, Subgraph, NeighboursNumber, Primes, Directed)
+    L = len(subgraph)
+    n_neighbours = len(np.nonzero(neighbourhood)[0]) - L
+    primes = prime_count(
+        A, L0, np.array(list(subgraph)),
+        n_neighbours, primes, directed
+    )
     if L == L0:
-        return Primes
+        return primes
 
-    Neighbours = np.where(np.array(Neighbourhood) & np.array(AllowedVert))[0]
-    for j in range(len(Neighbours)):
-        v = Neighbours[j]
-        if len(Subgraph) > L:
-            Subgraph[L] = v
+    neighbours = np.where(neighbourhood & allowed)[0]
+    for j, _ in enumerate(neighbours):
+        v = neighbours[j]
+        if len(subgraph) > L:
+            subgraph[L] = v
         else:
-            Subgraph.append(v)
-        AllowedVert[v] = False
-        newNeighbourhood = Neighbourhood + Anw[v, :]
-        Primes = recursive_subgraphs(A, Anw, L0, Subgraph[:], AllowedVert[:], Primes, newNeighbourhood[:], Directed)
+            subgraph.append(v)
+        allowed[v] = False
+        new_neighbourhood = neighbourhood + Anw[v, :]
+        primes = recursive_subgraphs(
+            A, Anw, L0, subgraph.copy(), allowed.copy(),
+            primes, new_neighbourhood, directed
+        )
 
-    return Primes
+    return primes
 
 
-def cycle_count(A, L0):
-    """
-    Counts all simple cycles of length up to L0 included on a
-    graph whose adjacency matrix is A.
+@numba.njit
+def cycle_count(
+    A: np.ndarray[tuple[int, int]],
+    L0: int
+) -> tuple[list[int], list[int]]:
+    """Count all simple cycles of length up to ``L0`` included on a
+    graph whose adjacency matrix is ``A``.
 
     Parameters
     ----------
-    A : numpy.ndarray
+    A
         Adjacency matrix
-    L0: int
+    L0
         Length of cycles to count
 
     Returns
     -------
-    tuple
-        Two lists are returned. In each, index "i" is the number of primes of length i>=1 up to L0
-        The first list is the count of N_positive - N_negative. The second one is the count of
-        N_positive + N_negative. Using these two lists, one can compute N_positive and N_negative.
+    diff
+        1D float array fo differences between counts
+        of positive and negative cycles of different lengths.
+    total
+        1D float array with the total counts of cycles of different lengths.
     """
-    Primes = ([0] * L0, [0] * L0)
+    A = A.copy()
+    primes = (
+        np.full(L0, 0, dtype=np.complex128),
+        np.full(L0, 0, dtype=np.complex128)
+    )
     np.fill_diagonal(A, 0)
 
     if is_symmetric(A):
         Anw = A != 0
         directed = False
     else:
-        Anw = (A != 0) | (A.transpose(1, 0) != 0)
+        Anw = (A != 0) | (A.T != 0)
         directed = True
 
-    Size = len(A)
-    if L0 > Size:
-        L0 = Size
+    size = len(A)
+    L0 = min(size, L0)
 
-    AllowedVert = [True] * Size
+    allowed = np.full(size, True)
     for i in range(len(A)):
-        AllowedVert[i] = False
-        Neighbourhood = [False] * Size
-        Neighbourhood[i] = True
-        Neighbourhood = Neighbourhood + Anw[i, :]
-        Primes = recursive_subgraphs(A, Anw, L0, [i], AllowedVert[:], Primes, Neighbourhood[:], directed)
+        allowed[i] = False
+        neighbourhood = np.full(size, False)
+        neighbourhood[i] = True
+        neighbourhood += Anw[i, :]
+        subgraph = numba.typed.List([i])
+        primes = recursive_subgraphs(
+            A, Anw, L0, subgraph, allowed.copy(),
+            primes, neighbourhood, directed
+        )
 
-    return Primes
+    return primes[0].real, primes[1].real
 
-__all__ = ['cycle_count']
+
+def cycle_count_sample(
+    A: np.ndarray[tuple[int, int]],
+    L0: int,
+    sample_size: int,
+    parallel: bool = False,
+    **kwds: Any
+) -> tuple[
+    np.ndarray[tuple[int], np.floating],
+    np.ndarray[tuple[int], np.floating]
+]:
+    """Sampling-approximated cycle counts for ``A``
+    based on simple cycles of length up to length ``L0``.
+
+    Parameters
+    ----------
+    A
+        Adjacency matrix
+    L0
+        Length of cycles to count
+    sample_size
+        Number of samples to draw.
+    sample_method
+        Sampling method.
+    sample_exact_subgraph_size
+        Should exact subgraph sizes be required drugin sampling.
+    parallel
+        Should parallelized implementation be used.
+
+    Returns
+    -------
+    diff
+        1D float array fo differences between counts
+        of positive and negative cycles of different lengths.
+    total
+        1D float array with the total counts of cycles of different lengths.
+    """
+    kwds = { "sample_size": sample_size, **kwds }
+    if parallel:
+        return _cycle_count_sample_parallel(A, L0, **kwds)
+    return _cycle_count_sample(A, L0, **kwds)
+
+
+@numba.njit
+def _cycle_count_sample(
+    A: np.ndarray[tuple[int, int]],
+    L0: int,
+    sample_size: int,
+    sample_method: Callable = nrsampling,
+    sample_exact_subgraph_size: bool = False
+) -> tuple[
+    np.ndarray[tuple[int], np.floating],
+    np.ndarray[tuple[int], np.floating]
+]:
+    """Sampling-approximated cycle counts for ``A``
+    based on simple cycles of length up to length ``L0``.
+    """
+    diff = np.zeros(L0, dtype=float)
+    total = np.zeros_like(diff)
+
+    for _ in range(sample_size):
+        idx = sample_method(A, L0, exact=sample_exact_subgraph_size)
+        _diff, _total = cycle_count(A[idx][:, idx], L0)
+        diff += _diff
+        total += _total
+    return diff, total
+
+
+@numba.njit(parallel=True)
+def _cycle_count_sample_parallel(
+    A: np.ndarray[tuple[int, int]],
+    L0: int,
+    sample_size: int,
+    sample_method: Callable = nrsampling,
+    sample_exact_subgraph_size: bool = False,
+    sample_temp_array_size: int = 1000
+) -> tuple[
+    np.ndarray[tuple[int], np.floating],
+    np.ndarray[tuple[int], np.floating]
+]:
+    """Parallel implementation of the sampling-approximated cycle counts
+    for ``A`` based on simple cycles of length up to length ``L0``.
+    """
+    # pylint: disable=not-an-iterable
+    diff = np.zeros((sample_temp_array_size, L0), dtype=float)
+    total = np.zeros_like(diff)
+
+    count = 0
+    while count < sample_size:
+        for i in numba.prange(sample_temp_array_size):
+            count += 1
+            if count >= sample_size:
+                break
+            vids = sample_method(A, L0, exact=sample_exact_subgraph_size)
+            _diff, _total = cycle_count(A[vids][:, vids], L0)
+            diff[i] += _diff
+            total[i] += _total
+
+    return diff.sum(axis=0), total.sum(axis=0)

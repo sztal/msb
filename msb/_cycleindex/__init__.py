@@ -1,37 +1,27 @@
-"""Reimplementation of the `Cycle Index <https://github.com/milani/cycleindex>`_
-package using Numba LLVM JIT to the package significantly more performant.
-"""
-from typing import Callable
+import numpy as np
 import signal
 from multiprocessing import Pool, sharedctypes, cpu_count
-import numpy as np
 from .cyclecount import cycle_count
 from .sampling import nrsampling, vxsampling
 from .utils import clean_matrix, calc_ratio
 
 
-def batch_count_(
-    A: np.ndarray[tuple[int, int]],
-    L0: int,
-    batch_size: int,
-    sampling_func: Callable = nrsampling,
-    exact_subgraph_size: bool = True,
-    counts=([], [])):
+def batch_count_(G, length, batch_size, sampling_func=nrsampling, exact_subgraph_size=True, counts=([], [])):
 
-    if A is None:
+    if G is None:
         # G is provided via global shared variable shared_G
-        A = np.ctypeslib.as_array(shared_G)
+        G = np.ctypeslib.as_array(shared_G)
 
     for i in range(batch_size):
-        subgraph = sampling_func(A, L0, exact_subgraph_size)
-        count = cycle_count(A[np.ix_(subgraph, subgraph)], L0)
+        subgraph = sampling_func(G, length, exact_subgraph_size)
+        count = cycle_count(G[np.ix_(subgraph, subgraph)], length)
         counts[0].append(count[0])
         counts[1].append(count[1])
     return counts
 
 
 def batch_count_parallel_(G, length, batch_size, n_cores, pool, sampling_func=nrsampling, exact_subgraph_size=True, counts=([], [])):
-    promises = [pool.apply_async(batch_count_, args=(None, length, int(np.ceil(batch_size / n_cores)), sampling_func, exact_subgraph_size))
+    promises = [pool.apply_async(batch_count_, args=(None, length, batch_size / n_cores, sampling_func, exact_subgraph_size))
                 for i in range(n_cores)]
     count = ([], [])
     for p in promises:

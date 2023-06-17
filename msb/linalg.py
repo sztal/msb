@@ -99,7 +99,7 @@ def eigenstuff(
     return ev, Q, W
 
 def logmatmul(A: np.ndarray, B: np.ndarray) -> np.ndarray:
-    """Matrix multiplication (dense) in log-space.
+    r"""Matrix multiplication (dense) in log-space.
 
     Parameters
     ----------

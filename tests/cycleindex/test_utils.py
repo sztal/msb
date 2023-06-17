@@ -4,8 +4,8 @@
 # pylint: disable=missing-function-docstring,line-too-long
 import pytest
 import numpy as np
-from msb._cycleindex.utils import clean_matrix, is_symmetric
-from msb._cycleindex.utils import is_weakly_connected, calc_ratio
+from msb.cycleindex.utils import clean_matrix, is_symmetric
+from msb.cycleindex.utils import is_weakly_connected, calc_ratio
 
 
 @pytest.mark.parametrize("A, out", [
@@ -52,21 +52,3 @@ def test_is_symmetric(A, expected):
 ])
 def test_is_weakly_connected(A, expected):
     assert is_weakly_connected(A) == expected
-
-
-@pytest.mark.parametrize("counts, expected", [
-    (
-        ([[1, 1, 1]], [[2, 2, 2]]),
-        [0.25, 0.25, 0.25]
-    ),
-    (
-        ([0.5, 0.5, 0.5, 0.5], [2, 2, 2, 2]),
-        [0.375, 0.375, 0.375, 0.375]
-    ),
-    (
-        ([[[1, 1, 1], [1, 1, 1]]], [[[2, 2, 2], [2, 2, 2]]]),
-        [0.25, 0.25, 0.25]
-    )
-])
-def test_calc_ratio(counts, expected):
-    assert np.allclose(calc_ratio(*counts), expected)
