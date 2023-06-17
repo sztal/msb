@@ -5,7 +5,7 @@ from typing import Optional, Any
 import numpy as np
 from .cyclecount import cycle_count, cycle_count_sample
 from .utils import calc_ratio
-from .sampling import nrsampling, vxsampling
+from .sampling import nrsampling, vxsampling, set_sampler_seed
 
 
 def balance_ratio(

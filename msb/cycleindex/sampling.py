@@ -45,7 +45,7 @@ def _vxsampling(
 
     return subgraph, allowed, neighbourhood
 
-
+@numba.njit
 def vxsampling(
     A: np.ndarray[tuple[int, int]],
     size: int,

@@ -71,9 +71,8 @@ def dfs(
     while stack:
         current = stack.pop()
         if current not in seen:
-            if seen or current != root:
-                seen.add(current)
-                yield current
+            seen.add(current)
+            yield current
             for i in np.nonzero(A[current])[0][::-1]:
                 if i not in seen:
                     stack.append(i)

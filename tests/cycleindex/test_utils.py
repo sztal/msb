@@ -5,7 +5,7 @@
 import pytest
 import numpy as np
 from msb.cycleindex.utils import clean_matrix, is_symmetric
-from msb.cycleindex.utils import is_weakly_connected, calc_ratio
+from msb.cycleindex.utils import dfs, is_weakly_connected
 
 
 @pytest.mark.parametrize("A, out", [
@@ -39,6 +39,26 @@ def test_clean_matrix(A, out):
 def test_is_symmetric(A, expected):
     assert is_symmetric(A) == expected
 
+@pytest.mark.parametrize("A, expected", [
+    (
+        np.array([
+            [ 1,  1,  0,  0,  0,  0,  1,  0,  1,  0],
+            [ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+            [ 1,  0,  0,  0,  0,  0,  1,  0,  0,  0],
+            [ 0,  0,  0,  0,  0,  0,  0,  0,  0,  1],
+            [ 0,  1,  0,  0,  0,  0,  0,  0,  0,  0],
+            [-1,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+            [ 1,  0,  0,  0,  0,  0,  0,  0,  1,  0],
+            [ 0,  0,  0,  0,  0,  0,  1,  0,  0,  0],
+            [ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+            [ 0,  0,  0,  1,  0,  1,  0,  0,  0,  0]],
+            dtype=np.int8
+        ),
+        [0, 1, 6, 8]
+    )
+])
+def test_dfs(A, expected):
+    assert [*dfs(A)] == expected
 
 @pytest.mark.parametrize("A, expected", [
     (
