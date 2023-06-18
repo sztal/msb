@@ -1,6 +1,9 @@
 # Sandbox
 _sandbox.py
 
+# Data pickles
+**/*.pkl
+
 # Figures
 **/figures/**
 **/figs/**
