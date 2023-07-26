@@ -503,17 +503,17 @@ class Balance:
         Y = np.empty((self.n_nodes, len(K)), dtype=complex)
         V = Q + W.T
 
-        for i, l in enumerate(K):
-            if l == 0:
+        for i, k in enumerate(K):
+            if k == 0:
                 Y[:, i] = 0
-            elif l == 1:
+            elif k == 1:
                 Y[:, i] = np.log(X.diagonal().astype(complex))
-            elif l == 2:
+            elif k == 2:
                 Y[:, i] = np.log(
                     np.array(X.multiply(X.T).sum(axis=1), dtype=complex).flatten()
                 )
             else:
-                Y[:, i] = logsumexp(V + l*ev, axis=-1)
+                Y[:, i] = logsumexp(V + k*ev, axis=-1)
 
         return self._output(Y)
 
@@ -1012,14 +1012,14 @@ class Balance:
 
         return C
 
-    def local_balance(
+    def k_balance(
         self,
         beta: Optional[float | np.ndarray] = None,
         *,
         weak: bool = False,
         K: Optional[np.ndarray] = None
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
-        """Local balance profile.
+        """:math:`k`-balance profile.
 
         Parameters
         ----------
@@ -1173,17 +1173,27 @@ class Balance:
 
         return C
 
-    def pairwise_index(self, *, weak: bool = False, **kwds: Any) -> np.ndarray:
-        """Calculate pairwise balance index.
+    def pairwise_index(
+        self,
+        *,
+        weak: bool = False,
+        kmin: int = 1,
+        **kwds: Any
+    ) -> np.ndarray:
+        """Calculate pairwise cohesion index.
 
         Parameters
         ----------
         weak
             Should weak balance be used.
+        kmin
+            Minimum walk length to consider.
+            Typically should be ``1``.
         **kwds
             Passed to :meth:`ltexp`
             (and :meth:`lnV` when ``weak=True``).
         """
+        kwds = dict(K=self.K(kmin), **kwds) # pylint: disable=use-dict-literal
         U = self.ltexp(self.U, **kwds)
         if weak:
             V = self.lnV(**kwds)
@@ -1193,8 +1203,8 @@ class Balance:
         J = np.real(np.exp(S - U))
         return J
 
-    def pairwise_balance(self, **kwds: Any) -> np.ndarray:
-        """Pairwise degree of balance.
+    def pairwise_cohesion(self, **kwds: Any) -> np.ndarray:
+        """Pairwise degree of cohesion.
 
         Parameters
         ----------
@@ -1230,8 +1240,8 @@ class Balance:
         max_clusters
             Maximum number of clusters to consider.
         **kwds
-            Passed to :meth:`pairwise_balance`
-            (``weak`` rgument is ignored).
+            Passed to :meth:`pairwise_cohesion`
+            (``weak`` argument is ignored).
 
         Returns
         -------
@@ -1257,7 +1267,8 @@ class Balance:
 
         for mode in modes:
             kwds["weak"] = mode == "w"
-            dist = 1 - self.pairwise_balance(beta=beta, **kwds)
+            dist = 1 - self.pairwise_cohesion(beta=beta, **kwds)
+            np.fill_diagonal(dist, 0)
             for n in N:
                 hc = AgglomerativeClustering(n_clusters=n, **clust_kws)
                 hc.fit(dist)

@@ -83,9 +83,9 @@ def get_relative_error(Bmap, m, method, **kwds):
 
 methods = {
     r"$B(G, \beta_{\max})$": "balance",
-    r"$B(G, k)$": "local_balance",
+    r"$B(G, k)$": "k_balance",
     r"$B(G, \beta_{\max}, i)$": "node_balance",
-    r"$B(G, \beta_{\max}, i, j)$": "pairwise_balance"
+    r"$B(G, \beta_{\max}, i, j)$": "pairwise_cohesion"
 }
 
 adata = []
