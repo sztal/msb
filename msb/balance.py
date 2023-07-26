@@ -1177,7 +1177,7 @@ class Balance:
         self,
         *,
         weak: bool = False,
-        kmin: int = 1,
+        K: Optional[np.ndarray] = None,
         **kwds: Any
     ) -> np.ndarray:
         """Calculate pairwise cohesion index.
@@ -1186,14 +1186,15 @@ class Balance:
         ----------
         weak
             Should weak balance be used.
-        kmin
-            Minimum walk length to consider.
-            Typically should be ``1``.
+        K
+            Sequence of cycle lengths to consider.
         **kwds
             Passed to :meth:`ltexp`
             (and :meth:`lnV` when ``weak=True``).
         """
-        kwds = dict(K=self.K(kmin), **kwds) # pylint: disable=use-dict-literal
+        if K is None:
+            K = self.K(2)
+        kwds = { "K": K, **kwds }
         U = self.ltexp(self.U, **kwds)
         if weak:
             V = self.lnV(**kwds)
@@ -1220,7 +1221,7 @@ class Balance:
         *,
         clust_kws: Optional[dict] = None,
         full_results: bool = False,
-        min_clusters: int = 2,
+        min_clusters: int = 1,
         max_clusters: int = 10,
         **kwds: Any
     ) -> pd.DataFrame | np.ndarray:
@@ -1262,7 +1263,7 @@ class Balance:
             "metric": "precomputed"
         }
         N     = np.arange(min_clusters, min(max_clusters, self.n_nodes) + 1)
-        data  = dict(n=N)
+        data  = { "n": N }
         modes = ("s", "w")
 
         for mode in modes:
@@ -1294,7 +1295,7 @@ class Balance:
         kmax: Optional[int] = None
     ) -> None:
         r"""Set :math:`k_{\min}` and/or :math:`k_{\max}`."""
-        for name, k in dict(kmin=kmin, kmax=kmax).items():
+        for name, k in { "kmin": kmin, "kmax": kmax }.items():
             if k is None:
                 continue
             if not isinstance(k, (int, np.integer)):
@@ -1312,69 +1313,31 @@ class Balance:
     def find_beta_max(
         self,
         *,
-        tol: float = 1e-6,
-        search_beta_min: float = 1e-9,
-        search_beta_max: float = 10,
-        search_grid_size: int = 100,
-        max_iter: int = 100,
-        alpha: float = 1,
-        **kwds: Any
+        K: Optional[np.ndarray] = None,
+        beta_eps: float = 1e-9
     ) -> float:
         r"""Find :math:`\beta_{\max}`.
 
         Parameters
         ----------
-        tol
-            Numerical tolerance for checking whether
-            :math:`\beta` has significantly changed.
-        search_beta_max
-            Maximum value of :math:`\beta` during
-            the initial grid search.
-        search_grid_size
-            Number of points used during grid search.
-        max_iter
-            Maximum search iterations.
-        alpha
-            The cumulative fraction of contribution profile
-            to consider when determining monotonicity.
+        K
+            Sequence of cycle lengths to consider.
+        beta_eps
+            Epsilon to set when analytic :math:`\beta`
+            is zero due to underflow.
         **kwds
-            Keyword arguments other than ``beta``
-            passed to :meth:`contrib`.
+            Keyword arguments passed to :meth`K`.
 
         Returns
         -------
         beta_max
-            :math:`\beta_{\text{max}}` up to ``tol`` accuracy.
-
-        Raises
-        ------
-        StopIteration
-            When ``max_iter`` is reached before
-            finding :math:`\beta_{\max}`.
+            :math:`\beta_{\text{max}}`
         """
-        # pylint: disable=too-many-locals
-        beta_max = np.inf
-        start = search_beta_min
-        end = search_beta_max
-        niter = 0
-        while True:
-            beta = np.linspace(start, end, search_grid_size)
-            C = self.contrib(beta, **kwds)
-            seq = C.groupby(level="beta", group_keys=False) \
-                .apply(lambda x: x[x.cumsum().shift(fill_value=0) < alpha]) \
-                .groupby(level="beta") \
-                .is_monotonic_decreasing
-            start = seq[::-1].idxmax()
-            if start == beta.max():
-                end = start*2
-            else:
-                end = start + (beta.max()-beta.min()) / (search_grid_size-1)
-            if np.abs(beta_max - start) <= tol:
-                return start
-            beta_max = start
-            niter += 1
-            if niter >= max_iter:
-                raise StopIteration("'max_iter' reached before finding 'beta_max'")
+        if K is None:
+            K = self.K()
+        ltrA = self.ltr_pow(self.U, K=K)
+        beta_max = np.exp(np.min(ltrA[:-1] - ltrA[1:] + np.log(K[1:]))).real
+        return max(beta_max, beta_eps)
 
     # Internals ---------------------------------------------------------------
 
