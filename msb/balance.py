@@ -351,7 +351,7 @@ class Balance:
         dropzero: bool = False,
         clog: bool = False,
         force_non_zero_ev: bool = True
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return leading eigenpairs of ``X``.
 
         The number of leading pairs to compute is given by ``self.m``.

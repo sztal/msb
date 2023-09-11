@@ -1,3 +1,5 @@
+# pylint: disable=missing-module-docstring,missing-function-docstring
+# pylint: disable=import-error,redefined-outer-name
 from pathlib import Path
 import pickle
 import numpy as np
@@ -83,9 +85,9 @@ def get_relative_error(Bmap, m, method, **kwds):
 
 methods = {
     r"$B(G, \beta_{\max})$": "balance",
-    r"$B(G, k)$": "k_balance",
-    r"$B(G, \beta_{\max}, i)$": "node_balance",
-    r"$B(G, \beta_{\max}, i, j)$": "pairwise_cohesion"
+    r"$B_k(G)$": "k_balance",
+    r"$B_i(G, \beta_{\max})$": "node_balance",
+    r"$B_{ij}(G, \beta_{\max})$": "pairwise_cohesion"
 }
 
 adata = []

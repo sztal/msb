@@ -1,6 +1,5 @@
-# pylint: disable=missing-module-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=import-error
+# pylint: disable=missing-module-docstring,missing-function-docstring
+# pylint: disable=import-error,redefined-outer-name
 from pathlib import Path
 from time import time
 import pickle
