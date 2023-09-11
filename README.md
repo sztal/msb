@@ -116,11 +116,11 @@ Moreover, this is just a technical issue, which can be solved be
 reimplementing the problematic parts, for instance as low-level C routines,
 so it is not an inherent limitation of the MSB approach.
 
-Furthermore, `pairwise_balance` method currently returns dense
+Furthermore, `pairwise_cohesion` method currently returns dense
 $n \times n$ arrays, which may consume a lot of memory for large networks
 (high $n$). In principle, it should be reimplemented as a linear operator
 avoiding storing the whole dense array, but this is not how it is done
-right now. As a result, `pairwise_balance` method applicability is
+right now. As a result, `pairwise_cohesion` method applicability is
 significantly limited by the available RAM memory and may not work
 for large networks. However, as mentioned, this is also only a technical
 issue that can be solved, so, again, it is not an inherent limitation of

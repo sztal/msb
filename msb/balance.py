@@ -351,7 +351,7 @@ class Balance:
         dropzero: bool = False,
         clog: bool = False,
         force_non_zero_ev: bool = True
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return leading eigenpairs of ``X``.
 
         The number of leading pairs to compute is given by ``self.m``.
@@ -503,17 +503,17 @@ class Balance:
         Y = np.empty((self.n_nodes, len(K)), dtype=complex)
         V = Q + W.T
 
-        for i, l in enumerate(K):
-            if l == 0:
+        for i, k in enumerate(K):
+            if k == 0:
                 Y[:, i] = 0
-            elif l == 1:
+            elif k == 1:
                 Y[:, i] = np.log(X.diagonal().astype(complex))
-            elif l == 2:
+            elif k == 2:
                 Y[:, i] = np.log(
                     np.array(X.multiply(X.T).sum(axis=1), dtype=complex).flatten()
                 )
             else:
-                Y[:, i] = logsumexp(V + l*ev, axis=-1)
+                Y[:, i] = logsumexp(V + k*ev, axis=-1)
 
         return self._output(Y)
 
@@ -1012,14 +1012,14 @@ class Balance:
 
         return C
 
-    def local_balance(
+    def k_balance(
         self,
         beta: Optional[float | np.ndarray] = None,
         *,
         weak: bool = False,
         K: Optional[np.ndarray] = None
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
-        """Local balance profile.
+        """:math:`k`-balance profile.
 
         Parameters
         ----------
@@ -1173,17 +1173,28 @@ class Balance:
 
         return C
 
-    def pairwise_index(self, *, weak: bool = False, **kwds: Any) -> np.ndarray:
-        """Calculate pairwise balance index.
+    def pairwise_index(
+        self,
+        *,
+        weak: bool = False,
+        K: Optional[np.ndarray] = None,
+        **kwds: Any
+    ) -> np.ndarray:
+        """Calculate pairwise cohesion index.
 
         Parameters
         ----------
         weak
             Should weak balance be used.
+        K
+            Sequence of cycle lengths to consider.
         **kwds
             Passed to :meth:`ltexp`
             (and :meth:`lnV` when ``weak=True``).
         """
+        if K is None:
+            K = self.K(2)
+        kwds = { "K": K, **kwds }
         U = self.ltexp(self.U, **kwds)
         if weak:
             V = self.lnV(**kwds)
@@ -1193,8 +1204,8 @@ class Balance:
         J = np.real(np.exp(S - U))
         return J
 
-    def pairwise_balance(self, **kwds: Any) -> np.ndarray:
-        """Pairwise degree of balance.
+    def pairwise_cohesion(self, **kwds: Any) -> np.ndarray:
+        """Pairwise degree of cohesion.
 
         Parameters
         ----------
@@ -1210,7 +1221,7 @@ class Balance:
         *,
         clust_kws: Optional[dict] = None,
         full_results: bool = False,
-        min_clusters: int = 2,
+        min_clusters: int = 1,
         max_clusters: int = 10,
         **kwds: Any
     ) -> pd.DataFrame | np.ndarray:
@@ -1230,8 +1241,8 @@ class Balance:
         max_clusters
             Maximum number of clusters to consider.
         **kwds
-            Passed to :meth:`pairwise_balance`
-            (``weak`` rgument is ignored).
+            Passed to :meth:`pairwise_cohesion`
+            (``weak`` argument is ignored).
 
         Returns
         -------
@@ -1252,12 +1263,13 @@ class Balance:
             "metric": "precomputed"
         }
         N     = np.arange(min_clusters, min(max_clusters, self.n_nodes) + 1)
-        data  = dict(n=N)
+        data  = { "n": N }
         modes = ("s", "w")
 
         for mode in modes:
             kwds["weak"] = mode == "w"
-            dist = 1 - self.pairwise_balance(beta=beta, **kwds)
+            dist = 1 - self.pairwise_cohesion(beta=beta, **kwds)
+            np.fill_diagonal(dist, 0)
             for n in N:
                 hc = AgglomerativeClustering(n_clusters=n, **clust_kws)
                 hc.fit(dist)
@@ -1283,7 +1295,7 @@ class Balance:
         kmax: Optional[int] = None
     ) -> None:
         r"""Set :math:`k_{\min}` and/or :math:`k_{\max}`."""
-        for name, k in dict(kmin=kmin, kmax=kmax).items():
+        for name, k in { "kmin": kmin, "kmax": kmax }.items():
             if k is None:
                 continue
             if not isinstance(k, (int, np.integer)):
@@ -1301,69 +1313,31 @@ class Balance:
     def find_beta_max(
         self,
         *,
-        tol: float = 1e-6,
-        search_beta_min: float = 1e-9,
-        search_beta_max: float = 10,
-        search_grid_size: int = 100,
-        max_iter: int = 100,
-        alpha: float = 1,
-        **kwds: Any
+        K: Optional[np.ndarray] = None,
+        beta_eps: float = 1e-9
     ) -> float:
         r"""Find :math:`\beta_{\max}`.
 
         Parameters
         ----------
-        tol
-            Numerical tolerance for checking whether
-            :math:`\beta` has significantly changed.
-        search_beta_max
-            Maximum value of :math:`\beta` during
-            the initial grid search.
-        search_grid_size
-            Number of points used during grid search.
-        max_iter
-            Maximum search iterations.
-        alpha
-            The cumulative fraction of contribution profile
-            to consider when determining monotonicity.
+        K
+            Sequence of cycle lengths to consider.
+        beta_eps
+            Epsilon to set when analytic :math:`\beta`
+            is zero due to underflow.
         **kwds
-            Keyword arguments other than ``beta``
-            passed to :meth:`contrib`.
+            Keyword arguments passed to :meth`K`.
 
         Returns
         -------
         beta_max
-            :math:`\beta_{\text{max}}` up to ``tol`` accuracy.
-
-        Raises
-        ------
-        StopIteration
-            When ``max_iter`` is reached before
-            finding :math:`\beta_{\max}`.
+            :math:`\beta_{\text{max}}`
         """
-        # pylint: disable=too-many-locals
-        beta_max = np.inf
-        start = search_beta_min
-        end = search_beta_max
-        niter = 0
-        while True:
-            beta = np.linspace(start, end, search_grid_size)
-            C = self.contrib(beta, **kwds)
-            seq = C.groupby(level="beta", group_keys=False) \
-                .apply(lambda x: x[x.cumsum().shift(fill_value=0) < alpha]) \
-                .groupby(level="beta") \
-                .is_monotonic_decreasing
-            start = seq[::-1].idxmax()
-            if start == beta.max():
-                end = start*2
-            else:
-                end = start + (beta.max()-beta.min()) / (search_grid_size-1)
-            if np.abs(beta_max - start) <= tol:
-                return start
-            beta_max = start
-            niter += 1
-            if niter >= max_iter:
-                raise StopIteration("'max_iter' reached before finding 'beta_max'")
+        if K is None:
+            K = self.K()
+        ltrA = self.ltr_pow(self.U, K=K)
+        beta_max = np.exp(np.min(ltrA[:-1] - ltrA[1:] + np.log(K[1:]))).real
+        return max(beta_max, beta_eps)
 
     # Internals ---------------------------------------------------------------
 

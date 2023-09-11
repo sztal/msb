@@ -1,3 +1,5 @@
+# pylint: disable=missing-module-docstring,missing-function-docstring
+# pylint: disable=import-error,redefined-outer-name
 from pathlib import Path
 from time import time
 import pickle
@@ -14,7 +16,7 @@ DATA = ROOT/"data"
 
 # Main parameters
 M = np.array([1, 2, 4, 8, 16])
-METHODS = ("balance", "local_balance", "node_balance")
+METHODS = ("balance", "k_balance", "node_balance")
 
 Epi   = ig.Graph.Read_GraphMLz(DATA/"epinions-trust.graphml.gz")
 Slash = ig.Graph.Read_GraphMLz(DATA/"slashdot-zoo.graphml.gz")

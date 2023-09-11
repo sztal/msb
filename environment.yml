@@ -1,11 +1,12 @@
 name: msb
 channels:
-  - defaults
+  - default
   - conda-forge
 dependencies:
   - python=3.10
   - numpy>=1.23,<2.0
   - scipy>=1.10,<2.0
+  - numba
   - pandas>=1.5,<2.0
   - scikit-learn>=1.2,<2.0
   - joblib>=1.1,<2.0
@@ -13,5 +14,7 @@ dependencies:
   - seaborn>=0.12
   - python-igraph>=0.10
   - networkx>=2.8
-  - tqdm>=4.64
+  - more-itertools>=8.12
+  - tqdm
   - jupyterlab
+  - ipywidgets

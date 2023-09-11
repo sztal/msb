@@ -95,11 +95,11 @@ def eigenstuff(
     if Q is not None:
         Q = Q[:, o]
         if inverse:
-            W = pinv(Q)
+            W = Q.T if symmetric else pinv(Q)
     return ev, Q, W
 
 def logmatmul(A: np.ndarray, B: np.ndarray) -> np.ndarray:
-    """Matrix multiplication (dense) in log-space.
+    r"""Matrix multiplication (dense) in log-space.
 
     Parameters
     ----------
