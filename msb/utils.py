@@ -22,13 +22,13 @@ def gini(X: np.ndarray) -> float:
     I = np.arange(1, n+1)
     return 2*np.sum(I*X) / (n*np.sum(X)) - (n+1)/n
 
-def frustration_index(
+def frustration_count(
     S: np.ndarray | spmatrix,
     gvec: np.ndarray,
     *,
     normalized: bool = True
 ) -> float:
-    """Calculate frustration index defined
+    """Calculate frustration count defined
     as a sum of the (weighted) counts positive edges
     between groups and negative edges within groups.
 
@@ -39,10 +39,10 @@ def frustration_index(
     g
         Grouping vector.
     normalized
-        Should the index be normalized by the number
-        of edges.
+        Should the count be normalized by the number of edges,
+        so the resultin value is frustration ratio.
     """
-    fidx = 0
+    fidx = .0
     m    = 0
     gvec = np.array(gvec)
     for g in np.unique(gvec):

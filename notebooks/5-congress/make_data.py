@@ -11,7 +11,7 @@ import igraph as ig
 from tqdm.auto import tqdm
 from sklearn.metrics import adjusted_mutual_info_score as ami
 from msb import Balance
-from msb.utils import frustration_index
+from msb.utils import frustration_count
 
 
 # Paths -----------------------------------------------------------------------
@@ -126,7 +126,7 @@ data = pd.concat([ pd.DataFrame({
     ],
     "fidx":     [ df.set_index("n")[cols].min().min() for df in v ],
     "fidx2":    [ df.set_index("n").loc[2, cols].min().min() for df in v ],
-    "fidxp":    [ frustration_index(B.S, G.vs["party"]) for G, B in zip(NETWORKS[k], BALANCE[k]) ],
+    "fidxp":    [ frustration_count(B.S, G.vs["party"]) for G, B in zip(NETWORKS[k], BALANCE[k]) ],
     "amip":     [
         ami(
             G.vs["party"],

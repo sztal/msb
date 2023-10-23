@@ -13,7 +13,7 @@ from scipy.special import logsumexp, loggamma
 import joblib
 from sklearn.cluster import AgglomerativeClustering
 from .linalg import eigenstuff, logmatmul
-from .utils import frustration_index
+from .utils import frustration_count
 
 
 class Balance:
@@ -1225,7 +1225,7 @@ class Balance:
         max_clusters: int = 10,
         **kwds: Any
     ) -> pd.DataFrame | np.ndarray:
-        """Find clusters that minimize frustration index.
+        """Find clusters that minimize frustration count.
 
         Parameters
         ----------
@@ -1247,7 +1247,7 @@ class Balance:
         Returns
         -------
         fidx, hc
-            Frustration index and the best clustering solution.
+            Frustration count and the best clustering solution.
         data
             Data frame with all clustering solutions.
             Returned when ``full_results=True``.
@@ -1273,7 +1273,7 @@ class Balance:
             for n in N:
                 hc = AgglomerativeClustering(n_clusters=n, **clust_kws)
                 hc.fit(dist)
-                fidx = frustration_index(self.S, hc.labels_)
+                fidx = frustration_count(self.S, hc.labels_)
                 data.setdefault("fidx_"+mode, []).append(fidx)
                 data.setdefault("hc_"+mode, []).append(hc)
 

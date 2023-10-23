@@ -12,7 +12,7 @@ from sklearn.metrics import adjusted_mutual_info_score as ami
 from tqdm.auto import tqdm
 from pqdm.processes import pqdm
 from msb import Balance
-from msb.utils import frustration_index
+from msb.utils import frustration_count
 
 
 # Functions -------------------------------------------------------------------
@@ -41,7 +41,7 @@ def find_best_partition(graph, weighted=True, attr="weight", progress=True, **kw
     best_part = None
     best_fidx = None
     for part in tqdm(iter_partitions(graph.vcount(), **kwds), disable=not progress):
-        fidx = frustration_index(A, part)
+        fidx = frustration_count(A, part)
         if best_fidx is None or fidx < best_fidx:
             best_part = part
             best_fidx = fidx
